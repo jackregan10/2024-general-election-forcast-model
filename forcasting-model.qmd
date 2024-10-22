@@ -1,0 +1,68 @@
+---
+title: "2024 General Election Forcasting Model"
+author: "Jack Regan"
+format: pdf
+editor: visual
+---
+
+```{r}
+#| lable: load-libraries
+library(dplyr)
+library(readr)
+library(janitor)
+library(stats)
+```
+
+```{r}
+#| label: read-polling-data
+polling_data <- read_csv("data/president_polls.csv", show_col_types = FALSE)
+glimpse(polling_data)
+```
+```{r}
+#| lable: select-columns-and-filter
+polling_data <- polling_data |>
+  select(
+    poll_id,
+    state,
+    start_date,
+    end_date,
+    pollster_rating_id, 
+    numeric_grade, 
+    sample_size, 
+    candidate_name, pct
+  ) |>
+  filter(candidate_name == "Kamala Harris")
+```
+```{r}
+#| label: generate-state-specific-datasets
+mi_polling_data <- polling_data |>
+  filter(state == "Michigan")
+nv_polling_data <- polling_data |>
+  filter(state == "Nevada")
+ar_polling_data <- polling_data |>
+  filter(state == "Arizona")
+nm_polling_data <- polling_data |>
+  filter(state == "New Mexico")
+wi_polling_data <- polling_data |>
+  filter(state == "Wisconsin")
+pa_polling_data <- polling_data |>
+  filter(state == "Pennsylvania")
+nc_polling_data <- polling_data |>
+  filter(state == "North Carolina")
+ga_polling_data <- polling_data |>
+  filter(state == "Georgia")
+```
+```{r}
+#| label: state-polling-data-summary-statistics
+
+toss_up_states <- c("Michigan", "Nevada", 
+      "Arizona", "New Mexico", 
+      "Wisconsin", "Pennsylvania", 
+      "North Carolina", "Georgia"
+    )
+polling_data |>
+  filter(state %in% toss_up_states) |>
+  group_by(state) |>
+  summarize(count = n())
+
+```
