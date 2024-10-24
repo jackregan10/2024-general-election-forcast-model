@@ -1,5 +1,6 @@
 ---
 title: "2024 General Election Forcasting Model"
+subtitle: "POLSCI 239 - Assignment Four"
 author: "Jack Regan"
 format: pdf
 editor: visual
@@ -7,12 +8,17 @@ editor: visual
 
 ```{r}
 #| lable: load-libraries
-library(dplyr)
+#| message: false
+
+library(tidyverse)
+library(ggplot2)
 library(readr)
 library(janitor)
 library(stats)
 ```
+# Data Set
 
+The data for this model is borrowed from ABC's 538 general election state polling dataset. The guidelines for polls selection can be reviewed on 538's webpage, here: https://abcnews.go.com/538/polling-averages-work/story?id=109364028.
 ```{r}
 #| label: read-polling-data
 polling_data <- read_csv("data/president_polls.csv", show_col_types = FALSE)
@@ -20,6 +26,11 @@ glimpse(polling_data)
 ```
 ```{r}
 #| lable: select-columns-and-filter
+toss_up_states <- c("Michigan", "Nevada", 
+      "Arizona", "New Mexico", 
+      "Wisconsin", "Pennsylvania", 
+      "North Carolina", "Georgia")
+
 polling_data <- polling_data |>
   select(
     poll_id,
@@ -31,8 +42,10 @@ polling_data <- polling_data |>
     sample_size, 
     candidate_name, pct
   ) |>
-  filter(candidate_name == "Kamala Harris")
+  filter(candidate_name == "Kamala Harris") |>
+  filter(state %in% toss_up_states)
 ```
+
 ```{r}
 #| label: generate-state-specific-datasets
 mi_polling_data <- polling_data |>
@@ -52,17 +65,14 @@ nc_polling_data <- polling_data |>
 ga_polling_data <- polling_data |>
   filter(state == "Georgia")
 ```
+
 ```{r}
-#| label: state-polling-data-summary-statistics
-
-toss_up_states <- c("Michigan", "Nevada", 
-      "Arizona", "New Mexico", 
-      "Wisconsin", "Pennsylvania", 
-      "North Carolina", "Georgia"
-    )
+#| label: calculate-margin-by-state
 polling_data |>
-  filter(state %in% toss_up_states) |>
   group_by(state) |>
-  summarize(count = n())
-
+  summarize(
+    count = n(),
+    count_not_na = count - sum(is.na(numeric_grade)),
+    mean_pct = mean(pct)
+  )
 ```
