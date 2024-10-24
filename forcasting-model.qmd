@@ -6,9 +6,11 @@ format: pdf
 editor: visual
 ---
 
+
 ```{r}
-#| lable: load-libraries
+#| label: load-libraries
 #| message: false
+#| echo: false
 
 library(tidyverse)
 library(ggplot2)
@@ -16,7 +18,8 @@ library(readr)
 library(janitor)
 library(stats)
 ```
-# Data Set
+
+# Methodology
 
 The data for this model is borrowed from ABC's 538 general election state polling dataset. The guidelines for polls selection can be reviewed on 538's webpage, here: https://abcnews.go.com/538/polling-averages-work/story?id=109364028.
 ```{r}
@@ -24,6 +27,10 @@ The data for this model is borrowed from ABC's 538 general election state pollin
 polling_data <- read_csv("data/president_polls.csv", show_col_types = FALSE)
 glimpse(polling_data)
 ```
+# Data Cleaning
+
+The model will only calculate win percentages for toss up states.
+
 ```{r}
 #| lable: select-columns-and-filter
 toss_up_states <- c("Michigan", "Nevada", 
@@ -35,44 +42,75 @@ polling_data <- polling_data |>
   select(
     poll_id,
     state,
-    start_date,
     end_date,
-    pollster_rating_id, 
-    numeric_grade, 
-    sample_size, 
-    candidate_name, pct
+    sample_size,
+    candidate_name,
+    pct
   ) |>
-  filter(candidate_name == "Kamala Harris") |>
-  filter(state %in% toss_up_states)
+  filter(candidate_name == "Kamala Harris" & state %in% toss_up_states) |>
+  mutate(end_date = as.Date(end_date, format = "%m/%d/%y")) |>
+  arrange(end_date) |>
+  drop_na(sample_size)
+
+glimpse(polling_data)
 ```
 
+# Adjusting Data for Sample Size
+
+Describe Weight for sample size - attributed to ABC
+
 ```{r}
-#| label: generate-state-specific-datasets
-mi_polling_data <- polling_data |>
-  filter(state == "Michigan")
-nv_polling_data <- polling_data |>
-  filter(state == "Nevada")
-ar_polling_data <- polling_data |>
-  filter(state == "Arizona")
-nm_polling_data <- polling_data |>
-  filter(state == "New Mexico")
-wi_polling_data <- polling_data |>
-  filter(state == "Wisconsin")
-pa_polling_data <- polling_data |>
-  filter(state == "Pennsylvania")
-nc_polling_data <- polling_data |>
-  filter(state == "North Carolina")
-ga_polling_data <- polling_data |>
-  filter(state == "Georgia")
+square_root_median_sample_size_by_state <- polling_data |>
+  group_by(state) |>
+  summarize(
+    square_root_median_sample_size = sqrt(median(sample_size, na.rm = TRUE))
+  )
+
+polling_data <- polling_data |>
+  mutate(adjusted_pct = case_when(
+    state == "Arizona" ~ sqrt(sample_size)/27.85678*pct,
+    state == "Georgia" ~ sqrt(sample_size)/28.26659*pct,
+    state == "Michigan" ~ sqrt(sample_size)/26.22975*pct,
+    state == "Nevada" ~ sqrt(sample_size)/26.01922*pct,
+    state == "New Mexico" ~ sqrt(sample_size)/22.94559*pct,
+    state == "North Carolina" ~ sqrt(sample_size)/28.28427*pct,
+    state == "Pennsylvania" ~ sqrt(sample_size)/28.33725*pct,
+    state == "Wisconsin" ~ sqrt(sample_size)/26.45751*pct
+    )
+  )
+
+glimpse(polling_data)
 ```
+
+# Exponentially Weighted Moving Average Calculation
+
+Describe EWMA averaging algorithm
 
 ```{r}
 #| label: calculate-margin-by-state
+#| message: FALSE
+
+calculate_ewma <- function(data, raw_average, lambda) {
+  
+  ewma <- numeric(length(data[[raw_average]]))
+  ewma[1] <- data[[raw_average]][1]
+  
+  for (i in 2:length(data[[raw_average]])) {
+    ewma[i] <- lambda * data[[raw_average]][i] + (1 - lambda) * ewma[i - 1]
+  }
+  return(sum(ewma)/length(data[[raw_average]]))
+}
 polling_data |>
   group_by(state) |>
-  summarize(
+  summarise(
     count = n(),
-    count_not_na = count - sum(is.na(numeric_grade)),
-    mean_pct = mean(pct)
+    mean_raw_pct = mean(pct),
+    ewma_adjusted_pct = calculate_ewma(cur_data(), "adjusted_pct", 0.95)
   )
 ```
+
+# Additional Considerations and Data Limitations
+
+This dataset introduces several inconsistencies to the model which will be addressed here. First, the inconsistent number of polls conducted within each state creates uncertainty in the accuracy of the data. Primarity, New Mexico was only polled 10 times in the time frame provided.
+
+Weighting and Averaging data admits a certian level of subjectivity into the data as the methods by which the data is adjusted is largely statistically insignificant. I chose to adjust by sample size and weight with and average thorugh EWMA as these were methods used by 538.
