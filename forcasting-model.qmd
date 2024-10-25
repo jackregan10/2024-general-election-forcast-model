@@ -49,6 +49,7 @@ polling_data <- polling_data |>
     candidate_name,
     pct
   ) |>
+  rename("dem_pct" = pct) |>
   filter(candidate_name == "Kamala Harris" & state %in% toss_up_states) |>
   mutate(end_date = as.Date(end_date, format = "%m/%d/%y")) |>
   arrange(end_date) |>
@@ -69,7 +70,7 @@ polling_data |>
   group_by(state) |>
   summarise(
     poll_count = n(),
-    raw_harris_approval = mean(pct),
+    raw_harris_approval = mean(dem_pct),
     ealiest_poll = min(end_date),
     most_recent_poll = max(end_date)
   )
@@ -83,6 +84,9 @@ Each poll was weighted using a function based on its sample size. Specifically, 
 
 ```{r}
 #| lable: cleaning-data
+
+options(pillar.sigfig = 7)
+
 square_root_median_sample_size_by_state <- polling_data |>
   group_by(state) |>
   summarize(
@@ -92,14 +96,14 @@ as_tibble(square_root_median_sample_size_by_state)
 
 polling_data <- polling_data |>
   mutate(adjusted_pct = case_when(
-    state == "Arizona" ~ sqrt(sample_size)/27.85678*pct,
-    state == "Georgia" ~ sqrt(sample_size)/28.26659*pct,
-    state == "Michigan" ~ sqrt(sample_size)/26.22975*pct,
-    state == "Nevada" ~ sqrt(sample_size)/26.01922*pct,
-    state == "New Mexico" ~ sqrt(sample_size)/22.94559*pct,
-    state == "North Carolina" ~ sqrt(sample_size)/28.28427*pct,
-    state == "Pennsylvania" ~ sqrt(sample_size)/28.33725*pct,
-    state == "Wisconsin" ~ sqrt(sample_size)/26.45751*pct
+    state == "Arizona" ~ sqrt(sample_size)/27.85678*dem_pct,
+    state == "Georgia" ~ sqrt(sample_size)/28.26659*dem_pct,
+    state == "Michigan" ~ sqrt(sample_size)/26.22975*dem_pct,
+    state == "Nevada" ~ sqrt(sample_size)/26.01922*dem_pct,
+    state == "New Mexico" ~ sqrt(sample_size)/22.94559*dem_pct,
+    state == "North Carolina" ~ sqrt(sample_size)/28.28427*dem_pct,
+    state == "Pennsylvania" ~ sqrt(sample_size)/28.33725*dem_pct,
+    state == "Wisconsin" ~ sqrt(sample_size)/26.45751*dem_pct
     )
   )
 
