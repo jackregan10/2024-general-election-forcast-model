@@ -29,7 +29,7 @@ glimpse(polling_data)
 ```
 # Data Cleaning
 
-The model will only calculate win percentages for toss up states. Additionally, if data was missing within any observations, the entire observation was removed from the model.
+The model will only calculate win percentages for toss up states.
 
 ```{r}
 #| lable: select-columns-and-filter
@@ -69,9 +69,9 @@ polling_data |>
   )
 ```
 
-# Adjusting Data for Sample Size
+# Weighting Data by Sample Size
 
-Describe Weight for sample size - attributed to ABC
+Each poll was weighted using a function that includes the square root of a poll's sample size. Specifically, I square rooted the median sample size by each state and then multipled the Harris approval percentage for each poll by the square root of the poll's sample size divided by that states' squared median sample size. This methodology was adopted from 538's weighting guidelines and then adjusted to fit the specifications of the dataset. Therefore, a new "adjusted_pct" was applied to each poll in the dataset.
 
 ```{r}
 #| lable: cleaning-data
@@ -97,13 +97,12 @@ polling_data <- polling_data |>
 glimpse(polling_data)
 ```
 
-# Exponentially Weighted Moving Average Calculation
+# Exponentially Weighted Moving Average
 
 Describe EWMA averaging algorithm
 
-```{r}
+```{r message = FALSE}
 #| label: calculate-margin-by-state
-#| message: FALSE
 
 calculate_ewma <- function(data, raw_average, lambda) {
   
@@ -113,19 +112,18 @@ calculate_ewma <- function(data, raw_average, lambda) {
   for (i in 2:length(data[[raw_average]])) {
     ewma[i] <- lambda * data[[raw_average]][i] + (1 - lambda) * ewma[i - 1]
   }
-  return(sum(ewma)/length(data[[raw_average]]))
+  return(sum(ewma)/length(ewma))
 }
 polling_data |>
   group_by(state) |>
   summarise(
     count = n(),
-    mean_raw_pct = mean(pct),
     ewma_adjusted_pct = calculate_ewma(cur_data(), "adjusted_pct", 0.95)
   )
 ```
 
 # Additional Considerations and Data Limitations
 
-This dataset introduces several inconsistencies to the model which will be addressed here. First, the inconsistent number of polls conducted within each state creates uncertainty in the accuracy of the data. Primarity, New Mexico was only polled 10 times in the time frame provided.
+This dataset introduces several inconsistencies to the model which will be addressed here. First, the inconsistent number of polls conducted within each state creates uncertainty in the accuracy of the data. Second, the variability of polling sources opens the data to potential bias. FiveThirtyEight uses extensive guidelines when choosing polls to include within their data in order to account for bias; however, this is mostly a subjective science and isn't statistically grounded in my model. Information on 538's polling policy can be found here (https://fivethirtyeight.com/features/polls-policy-and-faqs/). Third, this model uses a ruidmentary modeling algorithm that adjusts based on sample size and poll recency. Other weights such as weight by pollster rating and margin of error are common strategies, but are not considered in this model.
 
-Weighting and Averaging data admits a certian level of subjectivity into the data as the methods by which the data is adjusted is largely statistically insignificant. I chose to adjust by sample size and weight with and average thorugh EWMA as these were methods used by 538.
+Additionally, weighting and averaging data admits a certian level of subjectivity into the data as the methods by which the data is adjusted are largely statistically insignificant. The weighting and averaging methods I chose were subjective choices.
