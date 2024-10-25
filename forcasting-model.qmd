@@ -21,7 +21,7 @@ library(stats)
 
 # Methodology
 
-The data for this model is borrowed from ABC's 538 general election state polling dataset. The guidelines for polls selection can be reviewed on 538's webpage, here: https://abcnews.go.com/538/polling-averages-work/story?id=109364028.
+The data for this model is borrowed from ABC's 538 general election state polling dataset. (Full citation in README)
 ```{r}
 #| label: read-polling-data
 polling_data <- read_csv("data/president_polls.csv", show_col_types = FALSE)
@@ -29,7 +29,7 @@ glimpse(polling_data)
 ```
 # Data Cleaning
 
-The model will only calculate win percentages for toss up states.
+The model will only calculate win percentages for toss up states. Additionally, if data was missing within any observations, the entire observation was removed from the model.
 
 ```{r}
 #| lable: select-columns-and-filter
@@ -55,11 +55,26 @@ polling_data <- polling_data |>
 glimpse(polling_data)
 ```
 
+# Summary Statistics
+
+```{r}
+#| label: summary-statistics
+polling_data |>
+  group_by(state) |>
+  summarise(
+    poll_count = n(),
+    raw_harris_approval = mean(pct),
+    ealiest_poll = min(end_date),
+    most_recent_poll = max(end_date)
+  )
+```
+
 # Adjusting Data for Sample Size
 
 Describe Weight for sample size - attributed to ABC
 
 ```{r}
+#| lable: cleaning-data
 square_root_median_sample_size_by_state <- polling_data |>
   group_by(state) |>
   summarize(
