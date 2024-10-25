@@ -27,6 +27,8 @@ The data for this model is borrowed from ABC's 538 general election state pollin
 polling_data <- read_csv("data/president_polls.csv", show_col_types = FALSE)
 glimpse(polling_data)
 ```
+\newpage
+
 # Data Cleaning
 
 The model will only calculate win percentages for toss up states.
@@ -54,11 +56,15 @@ polling_data <- polling_data |>
 
 glimpse(polling_data)
 ```
+\newpage
 
 # Summary Statistics
 
 ```{r}
 #| label: summary-statistics
+
+options(pillar.sigfig = 7)
+
 polling_data |>
   group_by(state) |>
   summarise(
@@ -69,9 +75,11 @@ polling_data |>
   )
 ```
 
+\newpage 
+
 # Weighting Data by Sample Size
 
-Each poll was weighted using a function that includes the square root of a poll's sample size. Specifically, I square rooted the median sample size by each state and then multipled the Harris approval percentage for each poll by the square root of the poll's sample size divided by that states' squared median sample size. This methodology was adopted from 538's weighting guidelines and then adjusted to fit the specifications of the dataset. Therefore, a new "adjusted_pct" was applied to each poll in the dataset.
+Each poll was weighted using a function based on its sample size. Specifically, I take the square root of the median sample size for each state and then multipled the Harris approval percentage for each poll by the square root of the poll's sample size divided by that states' square-rooted median sample size. This methodology was adopted from 538's weighting guidelines and then adjusted to fit the specifications of the dataset. A new "adjusted_pct" variable was applied to each poll in the dataset.
 
 ```{r}
 #| lable: cleaning-data
@@ -80,6 +88,7 @@ square_root_median_sample_size_by_state <- polling_data |>
   summarize(
     square_root_median_sample_size = sqrt(median(sample_size, na.rm = TRUE))
   )
+as_tibble(square_root_median_sample_size_by_state)
 
 polling_data <- polling_data |>
   mutate(adjusted_pct = case_when(
@@ -97,12 +106,17 @@ polling_data <- polling_data |>
 glimpse(polling_data)
 ```
 
+\newpage
+
 # Exponentially Weighted Moving Average
 
-Describe EWMA averaging algorithm
+In an EWMA calculation, recent data points are assigned more weight than older points. This makes the average more responsive to recent changes in the data. The lambda variable controls how much weight is assigned to more recent data points. I assign a lambda value of 0.95 in order to assign greater importance to more recent polls. The smoothed average provides the a value for Harris' approval rating that is then used as the Dem win percentage in my forcast. More documentation on the EWMA can be found here (https://www.investopedia.com/articles/07/ewma.asp).
 
-```{r message = FALSE}
+```{r}
 #| label: calculate-margin-by-state
+#| message: false
+
+options(pillar.sigfig = 7)
 
 calculate_ewma <- function(data, raw_average, lambda) {
   
@@ -112,18 +126,19 @@ calculate_ewma <- function(data, raw_average, lambda) {
   for (i in 2:length(data[[raw_average]])) {
     ewma[i] <- lambda * data[[raw_average]][i] + (1 - lambda) * ewma[i - 1]
   }
-  return(sum(ewma)/length(ewma))
+  return(ewma[length(ewma)])
 }
 polling_data |>
   group_by(state) |>
   summarise(
-    count = n(),
     ewma_adjusted_pct = calculate_ewma(cur_data(), "adjusted_pct", 0.95)
   )
 ```
 
+\newpage
+
 # Additional Considerations and Data Limitations
 
-This dataset introduces several inconsistencies to the model which will be addressed here. First, the inconsistent number of polls conducted within each state creates uncertainty in the accuracy of the data. Second, the variability of polling sources opens the data to potential bias. FiveThirtyEight uses extensive guidelines when choosing polls to include within their data in order to account for bias; however, this is mostly a subjective science and isn't statistically grounded in my model. Information on 538's polling policy can be found here (https://fivethirtyeight.com/features/polls-policy-and-faqs/). Third, this model uses a ruidmentary modeling algorithm that adjusts based on sample size and poll recency. Other weights such as weight by pollster rating and margin of error are common strategies, but are not considered in this model.
+This dataset introduces several inconsistencies to the model which will be addressed here. First, the inconsistent number of polls conducted within each state creates uncertainty in the accuracy of the data. Second, the variability of polling sources opens the data to potential bias. FiveThirtyEight uses extensive guidelines when choosing polls to include within their data in order to account for bias; however, this is mostly a subjective science and isn't statistically grounded in my model. Information on 538's polling policy can be found here (https://fivethirtyeight.com/features/polls-policy-and-faqs/). Third, this model uses a ruidmentary modeling algorithm that adjusts based on sample size and time decay. Other weights such as pollster rating and margin of error are common strategies, but are not considered in this model.
 
-Additionally, weighting and averaging data admits a certian level of subjectivity into the data as the methods by which the data is adjusted are largely statistically insignificant. The weighting and averaging methods I chose were subjective choices.
+Weighting and averaging data admits a certain level of subjectivity into the data as the methods by which the data is adjusted are largely statistically insignificant. The weighting and averaging methods I chose were subjective choices influenced by common practice but are not scientifically grounded as the best practice.
