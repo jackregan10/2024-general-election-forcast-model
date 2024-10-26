@@ -19,13 +19,13 @@ library(janitor)
 library(stats)
 ```
 
-# Methodology
+# Data
 
 The data for this model is borrowed from ABC's 538 general election state polling dataset. (Full citation in README)
 ```{r}
 #| label: read-polling-data
-polling_data <- read_csv("data/president_polls.csv", show_col_types = FALSE)
-glimpse(polling_data)
+raw_polling_data <- read_csv("data/president_polls.csv", show_col_types = FALSE)
+glimpse(raw_polling_data)
 ```
 \newpage
 
@@ -40,7 +40,7 @@ toss_up_states <- c("Michigan", "Nevada",
       "Wisconsin", "Pennsylvania", 
       "North Carolina", "Georgia")
 
-polling_data <- polling_data |>
+polling_data <- raw_polling_data |>
   select(
     poll_id,
     state,
@@ -71,7 +71,7 @@ polling_data |>
   summarise(
     poll_count = n(),
     raw_harris_approval = mean(dem_pct),
-    ealiest_poll = min(end_date),
+    earliest_poll = min(end_date),
     most_recent_poll = max(end_date)
   )
 ```
@@ -114,7 +114,7 @@ glimpse(polling_data)
 
 # Exponentially Weighted Moving Average
 
-In an EWMA calculation, recent data points are assigned more weight than older points. This makes the average more responsive to recent changes in the data. The lambda variable controls how much weight is assigned to more recent data points. I assign a lambda value of 0.95 in order to assign greater importance to more recent polls. The smoothed average provides the a value for Harris' approval rating that is then used as the Dem win percentage in my forcast. More documentation on the EWMA can be found here (https://www.investopedia.com/articles/07/ewma.asp).
+In an EWMA calculation, recent data points are assigned more weight than older points. This makes the average more responsive to recent changes in the data. The lambda variable controls how much weight is assigned to more recent data points. I assign a lambda value of 0.95 in order to assign greater weight to more recent polls. The smoothed average provides a single value for each state that represents the democrat win percentage.  This value is then used in my forecast prediction. More documentation on the EWMA can be found here (https://www.investopedia.com/articles/07/ewma.asp).
 
 ```{r}
 #| label: calculate-margin-by-state
@@ -133,9 +133,9 @@ calculate_ewma <- function(data, raw_average, lambda) {
   return(ewma[length(ewma)])
 }
 polling_data |>
-  group_by(state) |>
+  group_by(state) |> 
   summarise(
-    ewma_adjusted_pct = calculate_ewma(cur_data(), "adjusted_pct", 0.95)
+    ewma_adjusted_pct = calculate_ewma(cur_data(), "adjusted_pct", 0.85)
   )
 ```
 
