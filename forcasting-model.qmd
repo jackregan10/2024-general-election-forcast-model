@@ -114,7 +114,7 @@ glimpse(polling_data)
 
 # Exponentially Weighted Moving Average
 
-In an EWMA calculation, recent data points are assigned more weight than older points. This makes the average more responsive to recent changes in the data. The lambda variable controls how much weight is assigned to more recent data points. I assign a lambda value of 0.95 in order to assign greater weight to more recent polls. The smoothed average provides a single value for each state that represents the democrat win percentage.  This value is then used in my forecast prediction. More documentation on the EWMA can be found here (https://www.investopedia.com/articles/07/ewma.asp).
+In an EWMA calculation, recent data points are assigned more weight than older points. This makes the average more responsive to recent changes in the data. The lambda variable controls how much weight is assigned to more recent data points. I assign a lambda value of 0.85 in order to assign greater weight to more recent polls. The smoothed average provides a single value for each state that represents the democrat win percentage.  This value is then used in my forecast prediction. More documentation on the EWMA can be found here (https://www.investopedia.com/articles/07/ewma.asp).
 
 ```{r}
 #| label: calculate-margin-by-state
