@@ -24,7 +24,10 @@ library(stats)
 The data for this model is borrowed from ABC's 538 general election state polling dataset. (Full citation in README)
 ```{r}
 #| label: read-polling-data
-raw_polling_data <- read_csv("data/president_polls.csv", show_col_types = FALSE)
+raw_polling_data <- read_csv("data/president_polls.csv", 
+  show_col_types = FALSE
+  )
+
 glimpse(raw_polling_data)
 ```
 \newpage
@@ -46,13 +49,14 @@ polling_data <- raw_polling_data |>
     state,
     end_date,
     sample_size,
-    candidate_name,
+    candidate_id,
     pct
   ) |>
   rename("dem_pct" = pct) |>
-  filter(candidate_name == "Kamala Harris" & state %in% toss_up_states) |>
+  filter(candidate_id == 16661 & state %in% toss_up_states) |>
   mutate(end_date = as.Date(end_date, format = "%m/%d/%y")) |>
   arrange(end_date) |>
+  distinct(poll_id, .keep_all = TRUE) |>
   drop_na(sample_size)
 
 glimpse(polling_data)
@@ -117,8 +121,8 @@ glimpse(polling_data)
 In an EWMA calculation, recent data points are assigned more weight than older points. This makes the average more responsive to recent changes in the data. The lambda variable controls how much weight is assigned to more recent data points. I assign a lambda value of 0.85 in order to assign greater weight to more recent polls. The smoothed average provides a single value for each state that represents the democrat win percentage.  This value is then used in my forecast prediction. More documentation on the EWMA can be found here (https://www.investopedia.com/articles/07/ewma.asp).
 
 ```{r}
-#| label: calculate-margin-by-state
 #| message: false
+#| label: calculate-margin-by-state
 
 options(pillar.sigfig = 7)
 
